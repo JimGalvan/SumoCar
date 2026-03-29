@@ -184,175 +184,188 @@ window.addEventListener('keyup', (e) => {
 // ========================
 // PHYSICS WORLD
 // ========================
+async function main(){
+  await RAPIER.init();
+  const world = new RAPIER.World(PHYSICS.GRAVITY);
 
-await RAPIER.init();
-const world = new RAPIER.World(PHYSICS.GRAVITY);
-
-// Ground
-const groundBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-world.createCollider(
-  RAPIER.ColliderDesc.cuboid(
-    GROUND.SIZE / 2,
-    GROUND.THICKNESS,
-    GROUND.SIZE / 2,
-  ),
-  groundBody,
-);
-
-// Car
-const carPhysicsBody = world.createRigidBody(
-  RAPIER.RigidBodyDesc.dynamic()
-    .setTranslation(0, CAR.SPAWN_Y, CAR.SPAWN_Z)
-    .setLinearDamping(CAR.LINEAR_DAMPING)
-    .setAngularDamping(CAR.ANGULAR_DAMPING),
-);
-world.createCollider(
-  RAPIER.ColliderDesc.cuboid(
-    CAR.WIDTH / 2,
-    CAR.HEIGHT / 2,
-    CAR.LENGTH / 2,
-  ).setMass(CAR.MASS),
-  carPhysicsBody,
-);
-
-// ========================
-// RAMPS
-// ========================
-
-function createRamp(x, y, z, angle) {
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(RAMP.WIDTH, RAMP.HEIGHT, RAMP.DEPTH),
-    new THREE.MeshStandardMaterial({ color: RAMP.COLOR }),
-  );
-  mesh.rotation.x = -angle;
-  mesh.position.set(x, y, z);
-  scene.add(mesh);
-
-  const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-angle, 0, 0));
-  body.setTranslation({ x, y, z }, true);
-  body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
+  // Ground
+  const groundBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
   world.createCollider(
-    RAPIER.ColliderDesc.cuboid(RAMP.WIDTH / 2, RAMP.HEIGHT / 2, RAMP.DEPTH / 2),
-    body,
+    RAPIER.ColliderDesc.cuboid(
+      GROUND.SIZE / 2,
+      GROUND.THICKNESS,
+      GROUND.SIZE / 2,
+    ),
+    groundBody,
   );
-}
 
-createRamp(0, 0.5, -10, Math.PI / 8);
-createRamp(10, 0.5, -20, Math.PI / 6);
+  // Car
+  const carPhysicsBody = world.createRigidBody(
+    RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(0, CAR.SPAWN_Y, CAR.SPAWN_Z)
+      .setLinearDamping(CAR.LINEAR_DAMPING)
+      .setAngularDamping(CAR.ANGULAR_DAMPING),
+  );
+  world.createCollider(
+    RAPIER.ColliderDesc.cuboid(
+      CAR.WIDTH / 2,
+      CAR.HEIGHT / 2,
+      CAR.LENGTH / 2,
+    ).setMass(CAR.MASS),
+    carPhysicsBody,
+  );
 
-// ========================
-// GAME LOOP
-// ========================
+  // ========================
+  // RAMPS
+  // ========================
 
-function getYaw(physicsBody) {
-  const { y, w } = physicsBody.rotation();
-  return 2 * Math.atan2(y, w);
-}
-
-function updateSteering(frontLeftWheel, frontRightWheel) {
-  if (keys['a']) {
-    frontLeftWheel.rotation.y = Math.min(
-      frontLeftWheel.rotation.y + STEERING.TURN_SPEED,
-      STEERING.MAX_ANGLE,
+  function createRamp(x, y, z, angle) {
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(RAMP.WIDTH, RAMP.HEIGHT, RAMP.DEPTH),
+      new THREE.MeshStandardMaterial({ color: RAMP.COLOR }),
     );
-  } else if (keys['d']) {
-    frontLeftWheel.rotation.y = Math.max(
-      frontLeftWheel.rotation.y - STEERING.TURN_SPEED,
-      -STEERING.MAX_ANGLE,
+    mesh.rotation.x = -angle;
+    mesh.position.set(x, y, z);
+    scene.add(mesh);
+
+    const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    const q = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(-angle, 0, 0),
     );
-  } else {
-    frontLeftWheel.rotation.y *= STEERING.RETURN_DAMPING;
+    body.setTranslation({ x, y, z }, true);
+    body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
+    world.createCollider(
+      RAPIER.ColliderDesc.cuboid(
+        RAMP.WIDTH / 2,
+        RAMP.HEIGHT / 2,
+        RAMP.DEPTH / 2,
+      ),
+      body,
+    );
   }
-  frontRightWheel.rotation.y = frontLeftWheel.rotation.y;
-  return frontLeftWheel.rotation.y;
-}
 
-function updateDriveForces(steeringAngle, rearLeftWheel, frontLeftWheel, deltaTime) {
-  const driving = keys['w'] || keys['s'];
-  const turning = keys['a'] || keys['d'];
+  createRamp(0, 0.5, -10, Math.PI / 8);
+  createRamp(10, 0.5, -20, Math.PI / 6);
 
-  if (driving) {
-    const direction = keys['w'] ? 1 : -1;
-    const yaw = getYaw(carPhysicsBody);
-    const directionX = Math.sin(yaw) * direction;
-    const directionZ = Math.cos(yaw) * direction;
+  // ========================
+  // GAME LOOP
+  // ========================
 
-    const linearVelocity = carPhysicsBody.linvel();
-    const currentSpeed = Math.sqrt(
-      linearVelocity.x ** 2 + linearVelocity.z ** 2,
-    );
-    if (currentSpeed < CAR.MAX_SPEED) {
-      const accelerationForce =
-        CAR.MASS * CAR.ACCELERATION * deltaTime;
+  function getYaw(physicsBody) {
+    const { y, w } = physicsBody.rotation();
+    return 2 * Math.atan2(y, w);
+  }
 
-      carPhysicsBody.applyImpulse(
-        {
-          x: accelerationForce * directionX,
-          y: 0,
-          z: accelerationForce * directionZ,
-        },
-        true,
+  function updateSteering(frontLeftWheel, frontRightWheel) {
+    if (keys['a']) {
+      frontLeftWheel.rotation.y = Math.min(
+        frontLeftWheel.rotation.y + STEERING.TURN_SPEED,
+        STEERING.MAX_ANGLE,
       );
+    } else if (keys['d']) {
+      frontLeftWheel.rotation.y = Math.max(
+        frontLeftWheel.rotation.y - STEERING.TURN_SPEED,
+        -STEERING.MAX_ANGLE,
+      );
+    } else {
+      frontLeftWheel.rotation.y *= STEERING.RETURN_DAMPING;
+    }
+    frontRightWheel.rotation.y = frontLeftWheel.rotation.y;
+    return frontLeftWheel.rotation.y;
+  }
+
+  function updateDriveForces(
+    steeringAngle,
+    rearLeftWheel,
+    frontLeftWheel,
+    deltaTime,
+  ) {
+    const driving = keys['w'] || keys['s'];
+    const turning = keys['a'] || keys['d'];
+
+    if (driving) {
+      const direction = keys['w'] ? 1 : -1;
+      const yaw = getYaw(carPhysicsBody);
+      const directionX = Math.sin(yaw) * direction;
+      const directionZ = Math.cos(yaw) * direction;
+
+      const linearVelocity = carPhysicsBody.linvel();
+      const currentSpeed = Math.sqrt(
+        linearVelocity.x ** 2 + linearVelocity.z ** 2,
+      );
+      if (currentSpeed < CAR.MAX_SPEED) {
+        const accelerationForce = CAR.MASS * CAR.ACCELERATION * deltaTime;
+
+        carPhysicsBody.applyImpulse(
+          {
+            x: accelerationForce * directionX,
+            y: 0,
+            z: accelerationForce * directionZ,
+          },
+          true,
+        );
+      }
+    }
+
+    if (driving && turning) {
+      const linearVelocity = carPhysicsBody.linvel();
+      const speed = Math.sqrt(linearVelocity.x ** 2 + linearVelocity.z ** 2);
+      const wheelBase = Math.abs(
+        rearLeftWheel.position.z - frontLeftWheel.position.z,
+      );
+      const angularVelStrength = 2.5;
+      const angularVelocity =
+        (speed / wheelBase) * Math.tan(steeringAngle) * angularVelStrength;
+      const dir = keys['w'] ? 1 : -1;
+
+      if (Math.abs(carPhysicsBody.angvel().y) < PHYSICS.MAX_ANGULAR_VEL) {
+        const force = angularVelocity * PHYSICS.TORQUE_FORCE * dir;
+        carPhysicsBody.applyTorqueImpulse({ x: 0, y: force, z: 0 }, true);
+      }
     }
   }
 
-  if (driving && turning) {
-    const linearVelocity = carPhysicsBody.linvel();
-    const speed = Math.sqrt(linearVelocity.x ** 2 + linearVelocity.z ** 2);
-    const wheelBase = Math.abs(
-      rearLeftWheel.position.z - frontLeftWheel.position.z,
-    );
-    const angularVelStrength = 2.5;
-    const angularVelocity =
-      (speed / wheelBase) * Math.tan(steeringAngle) * angularVelStrength;
-    const dir = keys['w'] ? 1 : -1;
-
-    if (Math.abs(carPhysicsBody.angvel().y) < PHYSICS.MAX_ANGULAR_VEL) {
-      const force = angularVelocity * PHYSICS.TORQUE_FORCE * dir;
-      carPhysicsBody.applyTorqueImpulse({ x: 0, y: force, z: 0 }, true);
-    }
+  function syncCarMesh() {
+    const { x, y, z } = carPhysicsBody.translation();
+    const r = carPhysicsBody.rotation();
+    car.position.set(x, y, z);
+    car.quaternion.set(r.x, r.y, r.z, r.w);
   }
+
+  function updateCamera() {
+    const yaw = getYaw(carPhysicsBody);
+    const targetX = car.position.x - Math.sin(yaw) * CAMERA.DISTANCE;
+    const targetZ = car.position.z - Math.cos(yaw) * CAMERA.DISTANCE;
+    const targetY = car.position.y + CAMERA.HEIGHT;
+
+    camera.position.x += (targetX - camera.position.x) * CAMERA.LERP;
+    camera.position.z += (targetZ - camera.position.z) * CAMERA.LERP;
+    camera.position.y += (targetY - camera.position.y) * CAMERA.LERP;
+    camera.lookAt(car.position);
+  }
+
+  function update() {
+    const deltaTime = clock.getDelta();
+
+    const frontLeftWheel = car.getObjectByName('frontLeftWheel');
+    const frontRightWheel = car.getObjectByName('frontRightWheel');
+    const rearLeftWheel = car.getObjectByName('rearLeftWheel');
+    const steeringAngle = updateSteering(frontLeftWheel, frontRightWheel);
+
+    updateDriveForces(steeringAngle, rearLeftWheel, frontLeftWheel, deltaTime);
+
+    world.step();
+    syncCarMesh();
+    updateCamera();
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    update();
+    renderer.render(scene, camera);
+  }
+
+  animate();
 }
 
-function syncCarMesh() {
-  const { x, y, z } = carPhysicsBody.translation();
-  const r = carPhysicsBody.rotation();
-  car.position.set(x, y, z);
-  car.quaternion.set(r.x, r.y, r.z, r.w);
-}
-
-function updateCamera() {
-  const yaw = getYaw(carPhysicsBody);
-  const targetX = car.position.x - Math.sin(yaw) * CAMERA.DISTANCE;
-  const targetZ = car.position.z - Math.cos(yaw) * CAMERA.DISTANCE;
-  const targetY = car.position.y + CAMERA.HEIGHT;
-
-  camera.position.x += (targetX - camera.position.x) * CAMERA.LERP;
-  camera.position.z += (targetZ - camera.position.z) * CAMERA.LERP;
-  camera.position.y += (targetY - camera.position.y) * CAMERA.LERP;
-  camera.lookAt(car.position);
-}
-
-function update() {
-  const deltaTime = clock.getDelta();
-
-  const frontLeftWheel = car.getObjectByName('frontLeftWheel');
-  const frontRightWheel = car.getObjectByName('frontRightWheel');
-  const rearLeftWheel = car.getObjectByName('rearLeftWheel');
-  const steeringAngle = updateSteering(frontLeftWheel, frontRightWheel);
-
-  updateDriveForces(steeringAngle, rearLeftWheel, frontLeftWheel, deltaTime);
-
-  world.step();
-  syncCarMesh();
-  updateCamera();
-}
-
-function animate() {
-  requestAnimationFrame(animate);
-  update();
-  renderer.render(scene, camera);
-}
-
-animate();
+main();
