@@ -288,14 +288,14 @@ function updateDriveForces(steeringAngle, rearLeftWheel, frontLeftWheel) {
     const wheelBase = Math.abs(
       rearLeftWheel.position.z - frontLeftWheel.position.z,
     );
-    const angularVelocity = (speed / wheelBase) * Math.tan(steeringAngle);
+    const angularVelStrength = 2.5;
+    const angularVelocity =
+      (speed / wheelBase) * Math.tan(steeringAngle) * angularVelStrength;
     const dir = keys['w'] ? 1 : -1;
 
     if (Math.abs(carPhysicsBody.angvel().y) < PHYSICS.MAX_ANGULAR_VEL) {
-      carPhysicsBody.applyTorqueImpulse(
-        { x: 0, y: angularVelocity * PHYSICS.TORQUE_FORCE * dir, z: 0 },
-        true,
-      );
+      const force = angularVelocity * PHYSICS.TORQUE_FORCE * dir;
+      carPhysicsBody.applyTorqueImpulse({ x: 0, y: force, z: 0 }, true);
     }
   }
 }
