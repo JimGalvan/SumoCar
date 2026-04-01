@@ -92,7 +92,7 @@ class Car implements IPhysicsEntity {
   getRearLeftWheel():   Wheel | undefined { return this.getWheelByName('rearLeftWheel'); }
   getRearRightWheel():  Wheel | undefined { return this.getWheelByName('rearRightWheel'); }
 
-  updateSteering(input: SteerDirection): void {
+  steer(input: SteerDirection): void {
     if (input === SteerDirection.Left) {
       this.steeringAngle = Math.min(this.steeringAngle + this.config.steeringTurnSpeed, this.config.steeringMaxAngle);
     } else if (input === SteerDirection.Right) {

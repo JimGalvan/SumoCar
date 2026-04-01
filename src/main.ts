@@ -6,6 +6,7 @@ import RampBuilder from './entities/environment/ramp/ramp-builder.ts';
 import Ground from './entities/environment/ground.ts';
 import Lighting from './world/lighting.ts';
 import BasicRenderer from './core/basic-renderer.ts';
+import FollowCamera from './world/follow-camera.ts';
 import { SCENE, GROUND, CAR, WHEEL, PHYSICS, CAMERA, RAMP } from './core/constants.ts';
 import DriveDirection from './enums/drive-direction.ts';
 import SteerDirection from './enums/steer-direction.ts';
@@ -28,7 +29,7 @@ async function main(): Promise<void> {
   await RAPIER.init();
 
   const renderer = new BasicRenderer({ fov: CAMERA.FOV, near: CAMERA.NEAR, far: CAMERA.FAR });
-  const camera = renderer.getCamera();
+  const followCamera = new FollowCamera(renderer.getCamera(), { distance: CAMERA.DISTANCE, height: CAMERA.HEIGHT, lerp: CAMERA.LERP });
   const gameWorld = new GameWorld(renderer, PHYSICS.GRAVITY, SCENE.BACKGROUND_COLOR);
 
   gameWorld.add(new Lighting({
@@ -91,29 +92,17 @@ async function main(): Promise<void> {
   // ========================
 
 
-  function updateCamera(): void {
-    const yaw = car.getYaw();
-    const targetX = car.mesh.position.x - Math.sin(yaw) * CAMERA.DISTANCE;
-    const targetZ = car.mesh.position.z - Math.cos(yaw) * CAMERA.DISTANCE;
-    const targetY = car.mesh.position.y + CAMERA.HEIGHT;
-
-    camera.position.x += (targetX - camera.position.x) * CAMERA.LERP;
-    camera.position.z += (targetZ - camera.position.z) * CAMERA.LERP;
-    camera.position.y += (targetY - camera.position.y) * CAMERA.LERP;
-    camera.lookAt(car.mesh.position);
-  }
-
   function update(): void {
     const deltaTime = clock.getDelta();
     const steerInput = keys['a'] ? SteerDirection.Left : keys['d'] ? SteerDirection.Right : SteerDirection.Neutral;
     const driveInput = keys['w'] ? DriveDirection.Forward : keys['s'] ? DriveDirection.Reverse : DriveDirection.Neutral;
-    car.updateSteering(steerInput);
+    car.steer(steerInput);
     if (driveInput !== DriveDirection.Neutral) {
       car.drive(driveInput, deltaTime);
     }
     gameWorld.step();
     car.sync();
-    updateCamera();
+    followCamera.update(car);
   }
 
   function animate(): void {
