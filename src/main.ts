@@ -1,11 +1,11 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import CarBuilder from './entities/car/car-builder.ts';
 import WheelFactory from './entities/car/wheel-factory.ts';
-import GameWorld from './game-world.js';
+import GameWorld from './world/game-world.ts';
 import RampBuilder from './entities/environment/ramp/ramp-builder.ts';
 import Ground from './entities/environment/ground.ts';
-import Lighting from './lighting.js';
-import BasicRenderer from './basic-renderer.js';
+import Lighting from './world/lighting.ts';
+import BasicRenderer from './core/basic-renderer.ts';
 import { SCENE, GROUND, CAR, WHEEL, PHYSICS, CAMERA, RAMP } from './core/constants.ts';
 import DriveDirection from './enums/drive-direction.ts';
 import SteerDirection from './enums/steer-direction.ts';

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
-import type { IRenderer } from './core/i-renderer.ts';
-import type { ISceneEntity } from './core/i-scene-entity.ts';
-import type { IPhysicsEntity } from './core/i-physics-entity.ts';
+import type { IRenderer } from '../core/i-renderer.ts';
+import type { ISceneEntity } from '../core/i-scene-entity.ts';
+import type { IPhysicsEntity } from '../core/i-physics-entity.ts';
 
 class GameWorld {
   private readonly world: RAPIER.World;
