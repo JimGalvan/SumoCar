@@ -1,4 +1,34 @@
+interface CarConfigOptions {
+  width?: number;
+  height?: number;
+  length?: number;
+  color?: number;
+  spawnY?: number;
+  spawnZ?: number;
+  linearDamping?: number;
+  angularDamping?: number;
+  mass?: number;
+  maxSpeed?: number;
+  acceleration?: number;
+  wheelYOffset?: number;
+  wheelSlotOffset?: number;
+}
+
 class CarConfig {
+  width: number;
+  height: number;
+  length: number;
+  color: number;
+  spawnY: number;
+  spawnZ: number;
+  linearDamping: number;
+  angularDamping: number;
+  mass: number;
+  maxSpeed: number;
+  acceleration: number;
+  wheelYOffset: number;
+  wheelSlotOffset: number;
+
   constructor({
     width = 1,
     height = 0.5,
@@ -13,7 +43,7 @@ class CarConfig {
     acceleration = 50,
     wheelYOffset = -0.2,
     wheelSlotOffset = 0.4,
-  } = {}) {
+  }: CarConfigOptions = {}) {
     this.width = width;
     this.height = height;
     this.length = length;

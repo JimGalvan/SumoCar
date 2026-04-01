@@ -1,11 +1,24 @@
 import * as THREE from 'three';
 
+interface WheelOptions {
+  radius?: number;
+  thickness?: number;
+  segments?: number;
+  color?: number;
+  name?: string;
+}
+
 class Wheel {
-  constructor({ radius = 0.3, thickness = 0.2, segments = 16, color = 0x333333, name = 'wheel' } = {}) {
-    this.radius = radius;
-    this.thickness = thickness;
-    this.segments = segments;
-    this.color = color;
+  readonly name: string;
+  private readonly mesh: THREE.Mesh;
+
+  constructor({
+    radius = 0.3,
+    thickness = 0.2,
+    segments = 16,
+    color = 0x333333,
+    name = 'wheel',
+  }: WheelOptions = {}) {
     this.name = name;
 
     this.mesh = new THREE.Mesh(
@@ -16,15 +29,15 @@ class Wheel {
     this.mesh.rotation.z = Math.PI / 2;
   }
 
-  getMesh() {
+  getMesh(): THREE.Mesh {
     return this.mesh;
   }
 
-  setSteeringAngle(angle) {
+  setSteeringAngle(angle: number): void {
     this.mesh.rotation.y = angle;
   }
 
-  getSteeringAngle() {
+  getSteeringAngle(): number {
     return this.mesh.rotation.y;
   }
 }

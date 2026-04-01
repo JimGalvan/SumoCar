@@ -1,8 +1,22 @@
 import * as THREE from 'three';
+import type { RigidBody } from '@dimforge/rapier3d-compat';
+import type CarConfig from './car-config.js';
+import type Wheel from './wheel.js';
+
+interface CarOptions {
+  wheels: Wheel[];
+  config: CarConfig;
+  physicsBody: RigidBody;
+}
 
 class Car {
-  constructor({ wheels, config, physicsBody }) {
-    if (!wheels || wheels.length !== 4) {
+  readonly mesh: THREE.Group;
+  private readonly wheels: Wheel[];
+  private readonly config: CarConfig;
+  private readonly physicsBody: RigidBody;
+
+  constructor({ wheels, config, physicsBody }: CarOptions) {
+    if (wheels.length !== 4) {
       throw new Error('Car must have 4 wheels');
     }
 
@@ -18,10 +32,9 @@ class Car {
       ),
     );
 
-    // Car determines where each wheel sits based on its own dimensions
     const halfWidth = config.width / 2;
     const halfLength = config.length / 2;
-    const wheelPositions = {
+    const wheelPositions: Record<string, { x: number; z: number }> = {
       frontLeftWheel:  { x: -halfWidth, z:  halfLength - config.wheelSlotOffset },
       frontRightWheel: { x:  halfWidth, z:  halfLength - config.wheelSlotOffset },
       rearLeftWheel:   { x: -halfWidth, z: -halfLength + config.wheelSlotOffset },
@@ -39,25 +52,20 @@ class Car {
     this.mesh.position.y = config.spawnY;
   }
 
-  getWidth() { return this.config.width; }
-  getHeight() { return this.config.height; }
-  getLength() { return this.config.length; }
-  getColor() { return this.config.color; }
-
-  getWheelByName(name) {
+  getWheelByName(name: string): Wheel | undefined {
     return this.wheels.find((w) => w.name === name);
   }
 
-  getFrontLeftWheel()  { return this.getWheelByName('frontLeftWheel'); }
-  getFrontRightWheel() { return this.getWheelByName('frontRightWheel'); }
-  getRearLeftWheel()   { return this.getWheelByName('rearLeftWheel'); }
-  getRearRightWheel()  { return this.getWheelByName('rearRightWheel'); }
+  getFrontLeftWheel():  Wheel | undefined { return this.getWheelByName('frontLeftWheel'); }
+  getFrontRightWheel(): Wheel | undefined { return this.getWheelByName('frontRightWheel'); }
+  getRearLeftWheel():   Wheel | undefined { return this.getWheelByName('rearLeftWheel'); }
+  getRearRightWheel():  Wheel | undefined { return this.getWheelByName('rearRightWheel'); }
 
-  getWheelBase() {
+  getWheelBase(): number {
     return this.config.length - 2 * this.config.wheelSlotOffset;
   }
 
-  sync() {
+  sync(): void {
     const { x, y, z } = this.physicsBody.translation();
     const r = this.physicsBody.rotation();
     this.mesh.position.set(x, y, z);
