@@ -33,11 +33,11 @@ class Wheel {
     return this.mesh;
   }
 
-  setSteeringAngle(angle: number): void {
+  setAngle(angle: number): void {
     this.mesh.rotation.y = angle;
   }
 
-  getSteeringAngle(): number {
+  getAngle(): number {
     return this.mesh.rotation.y;
   }
 }

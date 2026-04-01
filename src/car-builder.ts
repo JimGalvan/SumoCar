@@ -66,6 +66,31 @@ class CarBuilder {
     return this;
   }
 
+  setSteeringMaxAngle(value: number): this {
+    this.config.steeringMaxAngle = value;
+    return this;
+  }
+
+  setSteeringTurnSpeed(value: number): this {
+    this.config.steeringTurnSpeed = value;
+    return this;
+  }
+
+  setSteeringReturnDamping(value: number): this {
+    this.config.steeringReturnDamping = value;
+    return this;
+  }
+
+  setTorqueForce(value: number): this {
+    this.config.torqueForce = value;
+    return this;
+  }
+
+  setMaxAngularVelocity(value: number): this {
+    this.config.maxAngularVelocity = value;
+    return this;
+  }
+
   setConfig(config: Partial<CarConfig>): this {
     this.config = new CarConfig({ ...this.config, ...config });
     return this;

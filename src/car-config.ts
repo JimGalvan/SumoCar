@@ -12,6 +12,11 @@ interface CarConfigOptions {
   acceleration?: number;
   wheelYOffset?: number;
   wheelSlotOffset?: number;
+  steeringMaxAngle?: number;
+  steeringTurnSpeed?: number;
+  steeringReturnDamping?: number;
+  torqueForce?: number;
+  maxAngularVelocity?: number;
 }
 
 class CarConfig {
@@ -28,6 +33,11 @@ class CarConfig {
   acceleration: number;
   wheelYOffset: number;
   wheelSlotOffset: number;
+  steeringMaxAngle: number;
+  steeringTurnSpeed: number;
+  steeringReturnDamping: number;
+  torqueForce: number;
+  maxAngularVelocity: number;
 
   constructor({
     width = 1,
@@ -43,6 +53,11 @@ class CarConfig {
     acceleration = 50,
     wheelYOffset = -0.2,
     wheelSlotOffset = 0.4,
+    steeringMaxAngle = 0.5,
+    steeringTurnSpeed = 1,
+    steeringReturnDamping = 0.85,
+    torqueForce = 15,
+    maxAngularVelocity = 1.5,
   }: CarConfigOptions = {}) {
     this.width = width;
     this.height = height;
@@ -57,6 +72,11 @@ class CarConfig {
     this.acceleration = acceleration;
     this.wheelYOffset = wheelYOffset;
     this.wheelSlotOffset = wheelSlotOffset;
+    this.steeringMaxAngle = steeringMaxAngle;
+    this.steeringTurnSpeed = steeringTurnSpeed;
+    this.steeringReturnDamping = steeringReturnDamping;
+    this.torqueForce = torqueForce;
+    this.maxAngularVelocity = maxAngularVelocity;
   }
 }
 

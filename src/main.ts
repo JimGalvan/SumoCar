@@ -1,135 +1,17 @@
-import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import CarBuilder from './car-builder.js';
 import WheelFactory from './wheel-factory.js';
 import GameWorld from './game-world.js';
 import RampBuilder from './ramp-builder.js';
-import type Wheel from './wheel.js';
+import Ground from './ground.js';
+import Lighting from './lighting.js';
+import BasicRenderer from './basic-renderer.js';
+import { SCENE, GROUND, CAR, WHEEL, PHYSICS, CAMERA, RAMP } from './constants.js';
+import DriveDirection from './drive-direction.js';
+import SteerDirection from './steer-direction.js';
 
-// ========================
-// CONSTANTS
-// ========================
+import * as THREE from 'three';
 const clock = new THREE.Clock();
-
-const SCENE = {
-  BACKGROUND_COLOR: 0x87ceeb,
-  AMBIENT_LIGHT_COLOR: 0xffffff,
-  AMBIENT_LIGHT_INTENSITY: 0.2,
-  DIR_LIGHT_COLOR: 0xffffff,
-  DIR_LIGHT_INTENSITY: 2,
-  DIR_LIGHT_POS: new THREE.Vector3(5, 10, 5),
-};
-
-const GROUND = {
-  SIZE: 200,
-  COLOR: 0x228b22,
-  HALF_EXTENT: 50,
-  THICKNESS: 0.05,
-};
-
-const CAR = {
-  WIDTH: 1,
-  HEIGHT: 0.5,
-  LENGTH: 2,
-  COLOR: 0x00ff00,
-  SPAWN_Y: 1,
-  SPAWN_Z: 15,
-  LINEAR_DAMPING: 1,
-  ANGULAR_DAMPING: 2.0,
-  MASS: 500,
-  MAX_SPEED: 30,
-  ACCELERATION: 50,
-};
-
-const WHEEL = {
-  RADIUS: 0.3,
-  THICKNESS: 0.2,
-  SEGMENTS: 16,
-  COLOR: 0x333333,
-};
-
-const PHYSICS = {
-  GRAVITY: { x: 0, y: -9.81, z: 0 },
-  DRIVE_FORCE: 50,
-  TORQUE_FORCE: 15,
-  MAX_ANGULAR_VEL: 1.5,
-};
-
-const STEERING = {
-  TURN_SPEED: 1,
-  MAX_ANGLE: 0.5,
-  RETURN_DAMPING: 0.85,
-};
-
-const CAMERA = {
-  FOV: 75,
-  NEAR: 0.1,
-  FAR: 1000,
-  DISTANCE: 5,
-  HEIGHT: 3,
-  LERP: 0.2,
-};
-
-const RAMP = {
-  WIDTH: 4,
-  HEIGHT: 0.2,
-  DEPTH: 6,
-  COLOR: 0x8b4513,
-};
-
-// ========================
-// SCENE / RENDERER
-// ========================
-
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(SCENE.BACKGROUND_COLOR);
-scene.add(new THREE.AxesHelper(10));
-
-const camera = new THREE.PerspectiveCamera(
-  CAMERA.FOV,
-  window.innerWidth / window.innerHeight,
-  CAMERA.NEAR,
-  CAMERA.FAR,
-);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// ========================
-// LIGHTING
-// ========================
-
-const dirLight = new THREE.DirectionalLight(
-  SCENE.DIR_LIGHT_COLOR,
-  SCENE.DIR_LIGHT_INTENSITY,
-);
-dirLight.position.copy(SCENE.DIR_LIGHT_POS);
-scene.add(dirLight);
-scene.add(
-  new THREE.AmbientLight(
-    SCENE.AMBIENT_LIGHT_COLOR,
-    SCENE.AMBIENT_LIGHT_INTENSITY,
-  ),
-);
-
-// ========================
-// GROUND
-// ========================
-
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(GROUND.SIZE, GROUND.SIZE),
-  new THREE.MeshStandardMaterial({ color: GROUND.COLOR }),
-);
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.2;
-scene.add(ground);
 
 // ========================
 // INPUT
@@ -140,17 +22,24 @@ window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; })
 window.addEventListener('keyup',   (e) => { keys[e.key.toLowerCase()] = false; });
 
 // ========================
-// PHYSICS WORLD
+// MAIN
 // ========================
 async function main(): Promise<void> {
   await RAPIER.init();
-  const gameWorld = new GameWorld(scene, PHYSICS.GRAVITY);
 
-  // Ground
-  gameWorld.addStatic(
-    RAPIER.RigidBodyDesc.fixed(),
-    RAPIER.ColliderDesc.cuboid(GROUND.SIZE / 2, GROUND.THICKNESS, GROUND.SIZE / 2),
-  );
+  const renderer = new BasicRenderer({ fov: CAMERA.FOV, near: CAMERA.NEAR, far: CAMERA.FAR });
+  const camera = renderer.getCamera();
+  const gameWorld = new GameWorld(renderer, PHYSICS.GRAVITY, SCENE.BACKGROUND_COLOR);
+
+  gameWorld.add(new Lighting({
+    dirLightColor: SCENE.DIR_LIGHT_COLOR,
+    dirLightIntensity: SCENE.DIR_LIGHT_INTENSITY,
+    dirLightPosition: SCENE.DIR_LIGHT_POS,
+    ambientLightColor: SCENE.AMBIENT_LIGHT_COLOR,
+    ambientLightIntensity: SCENE.AMBIENT_LIGHT_INTENSITY,
+  }));
+
+  gameWorld.add(new Ground({ size: GROUND.SIZE, thickness: GROUND.THICKNESS, color: GROUND.COLOR }));
 
   const wheels = WheelFactory.createWheels({
     radius: WHEEL.RADIUS,
@@ -175,10 +64,6 @@ async function main(): Promise<void> {
     .build();
 
   gameWorld.add(car);
-
-  // ========================
-  // RAMPS
-  // ========================
 
   const ramp1 = new RampBuilder()
     .setWidth(RAMP.WIDTH)
@@ -205,64 +90,9 @@ async function main(): Promise<void> {
   // GAME LOOP
   // ========================
 
-  function getYaw(): number {
-    const { y, w } = car.getPhysicsBody().rotation();
-    return 2 * Math.atan2(y, w);
-  }
-
-  function updateSteering(frontLeft: Wheel, frontRight: Wheel): number {
-    if (keys['a']) {
-      frontLeft.setSteeringAngle(
-        Math.min(frontLeft.getSteeringAngle() + STEERING.TURN_SPEED, STEERING.MAX_ANGLE),
-      );
-    } else if (keys['d']) {
-      frontLeft.setSteeringAngle(
-        Math.max(frontLeft.getSteeringAngle() - STEERING.TURN_SPEED, -STEERING.MAX_ANGLE),
-      );
-    } else {
-      frontLeft.setSteeringAngle(frontLeft.getSteeringAngle() * STEERING.RETURN_DAMPING);
-    }
-    frontRight.setSteeringAngle(frontLeft.getSteeringAngle());
-    return frontLeft.getSteeringAngle();
-  }
-
-  function updateDriveForces(steeringAngle: number, deltaTime: number): void {
-    const driving = keys['w'] || keys['s'];
-    const turning = keys['a'] || keys['d'];
-
-    if (driving) {
-      const direction = keys['w'] ? 1 : -1;
-      const yaw = getYaw();
-      const linearVelocity = car.getPhysicsBody().linvel();
-      const currentSpeed = Math.sqrt(linearVelocity.x ** 2 + linearVelocity.z ** 2);
-
-      if (currentSpeed < CAR.MAX_SPEED) {
-        const accelerationForce = CAR.MASS * CAR.ACCELERATION * deltaTime;
-        car.getPhysicsBody().applyImpulse(
-          { x: accelerationForce * Math.sin(yaw) * direction, y: 0, z: accelerationForce * Math.cos(yaw) * direction },
-          true,
-        );
-      }
-    }
-
-    if (driving && turning) {
-      const linearVelocity = car.getPhysicsBody().linvel();
-      const speed = Math.sqrt(linearVelocity.x ** 2 + linearVelocity.z ** 2);
-      const angularVelocity =
-        (speed / car.getWheelBase()) * Math.tan(steeringAngle) * 2.5;
-      const dir = keys['w'] ? 1 : -1;
-
-      if (Math.abs(car.getPhysicsBody().angvel().y) < PHYSICS.MAX_ANGULAR_VEL) {
-        car.getPhysicsBody().applyTorqueImpulse(
-          { x: 0, y: angularVelocity * PHYSICS.TORQUE_FORCE * dir, z: 0 },
-          true,
-        );
-      }
-    }
-  }
 
   function updateCamera(): void {
-    const yaw = getYaw();
+    const yaw = car.getYaw();
     const targetX = car.mesh.position.x - Math.sin(yaw) * CAMERA.DISTANCE;
     const targetZ = car.mesh.position.z - Math.cos(yaw) * CAMERA.DISTANCE;
     const targetY = car.mesh.position.y + CAMERA.HEIGHT;
@@ -275,13 +105,12 @@ async function main(): Promise<void> {
 
   function update(): void {
     const deltaTime = clock.getDelta();
-
-    const frontLeft  = car.getFrontLeftWheel()!;
-    const frontRight = car.getFrontRightWheel()!;
-    const steeringAngle = updateSteering(frontLeft, frontRight);
-
-    updateDriveForces(steeringAngle, deltaTime);
-
+    const steerInput = keys['a'] ? SteerDirection.Left : keys['d'] ? SteerDirection.Right : SteerDirection.Neutral;
+    const driveInput = keys['w'] ? DriveDirection.Forward : keys['s'] ? DriveDirection.Reverse : DriveDirection.Neutral;
+    car.updateSteering(steerInput);
+    if (driveInput !== DriveDirection.Neutral) {
+      car.drive(driveInput, deltaTime);
+    }
     gameWorld.step();
     car.sync();
     updateCamera();
@@ -290,7 +119,7 @@ async function main(): Promise<void> {
   function animate(): void {
     requestAnimationFrame(animate);
     update();
-    renderer.render(scene, camera);
+    gameWorld.render();
   }
 
   animate();

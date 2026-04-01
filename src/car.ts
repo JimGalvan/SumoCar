@@ -4,6 +4,8 @@ import type { RigidBody, RigidBodyDesc, ColliderDesc } from '@dimforge/rapier3d-
 import type { IPhysicsEntity } from './i-physics-entity.js';
 import type CarConfig from './car-config.js';
 import type Wheel from './wheel.js';
+import DriveDirection from './drive-direction.js';
+import SteerDirection from './steer-direction.js';
 
 interface CarOptions {
   wheels: Wheel[];
@@ -15,6 +17,7 @@ class Car implements IPhysicsEntity {
   private readonly wheels: Wheel[];
   private readonly config: CarConfig;
   private physicsBody: RigidBody | null = null;
+  private steeringAngle: number = 0;
 
   constructor({ wheels, config }: CarOptions) {
     if (wheels.length !== 4) {
@@ -88,6 +91,50 @@ class Car implements IPhysicsEntity {
   getFrontRightWheel(): Wheel | undefined { return this.getWheelByName('frontRightWheel'); }
   getRearLeftWheel():   Wheel | undefined { return this.getWheelByName('rearLeftWheel'); }
   getRearRightWheel():  Wheel | undefined { return this.getWheelByName('rearRightWheel'); }
+
+  updateSteering(input: SteerDirection): void {
+    if (input === SteerDirection.Left) {
+      this.steeringAngle = Math.min(this.steeringAngle + this.config.steeringTurnSpeed, this.config.steeringMaxAngle);
+    } else if (input === SteerDirection.Right) {
+      this.steeringAngle = Math.max(this.steeringAngle - this.config.steeringTurnSpeed, -this.config.steeringMaxAngle);
+    } else {
+      this.steeringAngle *= this.config.steeringReturnDamping;
+    }
+    this.getFrontLeftWheel()?.setAngle(this.steeringAngle);
+    this.getFrontRightWheel()?.setAngle(this.steeringAngle);
+  }
+
+  drive(direction: DriveDirection, deltaTime: number): void {
+    const body = this.getPhysicsBody();
+    const yaw = this.getYaw();
+    const vel = body.linvel();
+    const speed = Math.sqrt(vel.x ** 2 + vel.z ** 2);
+
+    if (speed < this.config.maxSpeed) {
+      const force = this.config.mass * this.config.acceleration * deltaTime;
+      body.applyImpulse(
+        { x: force * Math.sin(yaw) * direction, y: 0, z: force * Math.cos(yaw) * direction },
+        true,
+      );
+    }
+
+    const angularVelocity = (speed / this.getWheelBase()) * Math.tan(this.steeringAngle) * 2.5;
+    if (Math.abs(body.angvel().y) < this.config.maxAngularVelocity) {
+      body.applyTorqueImpulse(
+        { x: 0, y: angularVelocity * this.config.torqueForce * direction, z: 0 },
+        true,
+      );
+    }
+  }
+
+  getSteeringAngle(): number {
+    return this.steeringAngle;
+  }
+
+  getYaw(): number {
+    const { y, w } = this.getPhysicsBody().rotation();
+    return 2 * Math.atan2(y, w);
+  }
 
   getWheelBase(): number {
     return this.config.length - 2 * this.config.wheelSlotOffset;
