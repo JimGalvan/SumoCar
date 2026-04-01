@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { RigidBody, RigidBodyDesc, ColliderDesc } from '@dimforge/rapier3d-compat';
-import type { IPhysicsEntity } from './i-physics-entity.js';
+import type { IPhysicsEntity } from '../../core/i-physics-entity.ts';
 
 interface GroundOptions {
   size?: number;

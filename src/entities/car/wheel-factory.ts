@@ -1,4 +1,4 @@
-import Wheel from './wheel.js';
+import Wheel from './wheel.ts';
 
 interface WheelFactoryOptions {
   radius?: number;

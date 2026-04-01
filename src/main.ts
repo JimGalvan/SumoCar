@@ -1,14 +1,14 @@
 import RAPIER from '@dimforge/rapier3d-compat';
-import CarBuilder from './car-builder.js';
-import WheelFactory from './wheel-factory.js';
+import CarBuilder from './entities/car/car-builder.ts';
+import WheelFactory from './entities/car/wheel-factory.ts';
 import GameWorld from './game-world.js';
-import RampBuilder from './ramp-builder.js';
-import Ground from './ground.js';
+import RampBuilder from './entities/environment/ramp/ramp-builder.ts';
+import Ground from './entities/environment/ground.ts';
 import Lighting from './lighting.js';
 import BasicRenderer from './basic-renderer.js';
-import { SCENE, GROUND, CAR, WHEEL, PHYSICS, CAMERA, RAMP } from './constants.js';
-import DriveDirection from './drive-direction.js';
-import SteerDirection from './steer-direction.js';
+import { SCENE, GROUND, CAR, WHEEL, PHYSICS, CAMERA, RAMP } from './core/constants.ts';
+import DriveDirection from './enums/drive-direction.ts';
+import SteerDirection from './enums/steer-direction.ts';
 
 import * as THREE from 'three';
 const clock = new THREE.Clock();

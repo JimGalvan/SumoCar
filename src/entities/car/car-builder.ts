@@ -1,6 +1,6 @@
-import CarConfig from './car-config.js';
-import Car from './car.js';
-import type Wheel from './wheel.js';
+import CarConfig from './car-config.ts';
+import Car from './car.ts';
+import type Wheel from './wheel.ts';
 
 class CarBuilder {
   private wheels: Wheel[] = [];

@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { RigidBody, RigidBodyDesc, ColliderDesc } from '@dimforge/rapier3d-compat';
-import type { IPhysicsEntity } from './i-physics-entity.js';
-import type CarConfig from './car-config.js';
-import type Wheel from './wheel.js';
-import DriveDirection from './drive-direction.js';
-import SteerDirection from './steer-direction.js';
+import type { IPhysicsEntity } from '../../core/i-physics-entity.ts';
+import type CarConfig from './car-config.ts';
+import type Wheel from './wheel.ts';
+import DriveDirection from '../../enums/drive-direction.ts';
+import SteerDirection from '../../enums/steer-direction.ts';
 
 interface CarOptions {
   wheels: Wheel[];

@@ -1,4 +1,4 @@
-import Ramp from './ramp.js';
+import Ramp from './ramp.ts';
 
 class RampBuilder {
   private x: number = 0;

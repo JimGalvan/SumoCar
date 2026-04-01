@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { ISceneEntity } from './i-scene-entity.js';
+import type { ISceneEntity } from './core/i-scene-entity.ts';
 
 interface LightingOptions {
   dirLightColor?: number;

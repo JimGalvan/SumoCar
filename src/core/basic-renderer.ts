@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { IRenderer } from './i-renderer.js';
+import type { IRenderer } from './i-renderer.ts';
 
 interface BasicRendererOptions {
   fov?: number;
