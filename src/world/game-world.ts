@@ -8,6 +8,7 @@ class GameWorld {
   private readonly world: RAPIER.World;
   private readonly scene: THREE.Scene;
   private readonly renderer: IRenderer;
+  private readonly entities: Map<string, ISceneEntity> = new Map();
 
   constructor(
     renderer: IRenderer,
@@ -27,6 +28,12 @@ class GameWorld {
       this.world.createCollider(entity.getColliderDesc(), body);
       entity.onPhysicsReady(body);
     }
+    const name = entity.getMesh().name;
+    if (name) this.entities.set(name, entity);
+  }
+
+  get(name: string): ISceneEntity | undefined {
+    return this.entities.get(name);
   }
 
   step(): void {

@@ -1,4 +1,5 @@
 interface CarConfigOptions {
+  name?: string;
   width?: number;
   height?: number;
   length?: number;
@@ -20,6 +21,7 @@ interface CarConfigOptions {
 }
 
 class CarConfig {
+  name: string;
   width: number;
   height: number;
   length: number;
@@ -40,6 +42,7 @@ class CarConfig {
   maxAngularVelocity: number;
 
   constructor({
+    name = 'car',
     width = 1,
     height = 0.5,
     length = 2,
@@ -59,6 +62,7 @@ class CarConfig {
     torqueForce = 15,
     maxAngularVelocity = 1.5,
   }: CarConfigOptions = {}) {
+    this.name = name;
     this.width = width;
     this.height = height;
     this.length = length;

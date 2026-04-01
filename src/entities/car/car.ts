@@ -28,6 +28,7 @@ class Car implements IPhysicsEntity {
     this.config = config;
 
     this.mesh = new THREE.Group();
+    this.mesh.name = config.name;
     this.mesh.add(
       new THREE.Mesh(
         new THREE.BoxGeometry(config.width, config.height, config.length),

@@ -6,6 +6,11 @@ class CarBuilder {
   private wheels: Wheel[] = [];
   private config: CarConfig = new CarConfig();
 
+  setName(name: string): this {
+    this.config.name = name;
+    return this;
+  }
+
   setWheels(wheels: Wheel[]): this {
     this.wheels = wheels;
     return this;
