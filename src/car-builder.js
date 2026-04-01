@@ -5,10 +5,16 @@ class CarBuilder {
   constructor() {
     this._wheels = [];
     this._config = new CarConfig();
+    this._physicsBody = null;
   }
 
   setWheels(wheels) {
     this._wheels = wheels;
+    return this;
+  }
+
+  setPhysicsBody(body) {
+    this._physicsBody = body;
     return this;
   }
 
@@ -83,6 +89,7 @@ class CarBuilder {
     return new Car({
       wheels: this._wheels,
       config: this._config,
+      physicsBody: this._physicsBody,
     });
   }
 }

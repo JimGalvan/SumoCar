@@ -1,36 +1,15 @@
-import Car from './car.js';
 import Wheel from './wheel.js';
-const WHEEL = {
-  RADIUS: 0.3,
-  THICKNESS: 0.2,
-  SEGMENTS: 16,
-  COLOR: 0x333333,
-  Y_OFFSET: -0.2,
-  SLOT_OFFSET: 0.4,
-};
 
-class Vector2XZ {
-  constructor(x = 0, z = 0) {
-    this.x = x;
-    this.z = z;
+class WheelFactory {
+  static createWheels({ radius = 0.3, thickness = 0.2, segments = 16, color = 0x333333 } = {}) {
+    const config = { radius, thickness, segments, color };
+    return [
+      new Wheel({ ...config, name: 'frontLeftWheel' }),
+      new Wheel({ ...config, name: 'frontRightWheel' }),
+      new Wheel({ ...config, name: 'rearLeftWheel' }),
+      new Wheel({ ...config, name: 'rearRightWheel' }),
+    ];
   }
 }
 
-class WheelFactory{
-
-  static createWheels(car){
-    const halfWidth = car.getWidth() / 2;
-    const halfLength = car.getLength() / 2;
-    const wheels = []
-    const frontLeftWheelName = 'frontLeftWheel';
-    const frontLeftWheel = new Wheel(
-      WHEEL.RADIUS,
-      WHEEL.THICKNESS,
-      WHEEL.SEGMENTS,
-      WHEEL.COLOR,
-      WHEEL.Y_OFFSET,
-      frontLeftWheelName,
-    );
-
-  }
-}
+export default WheelFactory;

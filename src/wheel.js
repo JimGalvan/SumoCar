@@ -1,36 +1,32 @@
 import * as THREE from 'three';
 
 class Wheel {
-  constructor(
-    radius = 0.3,
-    thickness = 0.2,
-    segments = 16,
-    color = 0x333333,
-    yOffset = 0,
-    name = 'wheel',
-  ) {
+  constructor({ radius = 0.3, thickness = 0.2, segments = 16, color = 0x333333, name = 'wheel' } = {}) {
     this.radius = radius;
     this.thickness = thickness;
     this.segments = segments;
     this.color = color;
-    this.wheel = color;
-    this.yOffset = yOffset;
+    this.name = name;
+
     this.mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(
-        this.radius,
-        this.radius,
-        this.thickness,
-        this.segments,
-      ),
-      new THREE.MeshStandardMaterial({ color: this.wheel }),
+      new THREE.CylinderGeometry(radius, radius, thickness, segments),
+      new THREE.MeshStandardMaterial({ color }),
     );
     this.mesh.name = name;
     this.mesh.rotation.z = Math.PI / 2;
-    this.mesh.position.set(x, this.yOffset, z);
   }
 
   getMesh() {
     return this.mesh;
   }
+
+  setSteeringAngle(angle) {
+    this.mesh.rotation.y = angle;
+  }
+
+  getSteeringAngle() {
+    return this.mesh.rotation.y;
+  }
 }
+
 export default Wheel;

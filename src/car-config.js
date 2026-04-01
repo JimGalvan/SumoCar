@@ -11,6 +11,8 @@ class CarConfig {
     mass = 500,
     maxSpeed = 30,
     acceleration = 50,
+    wheelYOffset = -0.2,
+    wheelSlotOffset = 0.4,
   } = {}) {
     this.width = width;
     this.height = height;
@@ -23,6 +25,8 @@ class CarConfig {
     this.mass = mass;
     this.maxSpeed = maxSpeed;
     this.acceleration = acceleration;
+    this.wheelYOffset = wheelYOffset;
+    this.wheelSlotOffset = wheelSlotOffset;
   }
 }
 

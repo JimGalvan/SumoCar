@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
+import CarBuilder from './car-builder.js';
+import WheelFactory from './wheel-factory.js';
 
 // ========================
 // CONSTANTS
@@ -41,8 +43,6 @@ const WHEEL = {
   THICKNESS: 0.2,
   SEGMENTS: 16,
   COLOR: 0x333333,
-  Y_OFFSET: -0.2,
-  SLOT_OFFSET: 0.4,
 };
 
 const PHYSICS = {
@@ -129,47 +129,6 @@ ground.position.y = -0.2;
 scene.add(ground);
 
 // ========================
-// CAR MESH
-// ========================
-
-function createWheel(x, z, name) {
-  const wheel = new THREE.Mesh(
-    new THREE.CylinderGeometry(
-      WHEEL.RADIUS,
-      WHEEL.RADIUS,
-      WHEEL.THICKNESS,
-      WHEEL.SEGMENTS,
-    ),
-    new THREE.MeshStandardMaterial({ color: WHEEL.COLOR }),
-  );
-  wheel.name = name;
-  wheel.rotation.z = Math.PI / 2;
-  wheel.position.set(x, WHEEL.Y_OFFSET, z);
-  return wheel;
-}
-
-const halfWidth = CAR.WIDTH / 2;
-const halfLength = CAR.LENGTH / 2;
-
-const WHEEL_POSITIONS = [
-  { x: -halfWidth, z: halfLength - WHEEL.SLOT_OFFSET, name: 'frontLeftWheel' },
-  { x: halfWidth, z: halfLength - WHEEL.SLOT_OFFSET, name: 'frontRightWheel' },
-  { x: -halfWidth, z: -halfLength + WHEEL.SLOT_OFFSET, name: 'rearLeftWheel' },
-  { x: halfWidth, z: -halfLength + WHEEL.SLOT_OFFSET, name: 'rearRightWheel' },
-];
-
-const car = new THREE.Group();
-car.add(
-  new THREE.Mesh(
-    new THREE.BoxGeometry(CAR.WIDTH, CAR.HEIGHT, CAR.LENGTH),
-    new THREE.MeshStandardMaterial({ color: CAR.COLOR }),
-  ),
-);
-WHEEL_POSITIONS.forEach(({ x, z, name }) => car.add(createWheel(x, z, name)));
-car.position.y = CAR.SPAWN_Y;
-scene.add(car);
-
-// ========================
 // INPUT
 // ========================
 
@@ -184,7 +143,7 @@ window.addEventListener('keyup', (e) => {
 // ========================
 // PHYSICS WORLD
 // ========================
-async function main(){
+async function main() {
   await RAPIER.init();
   const world = new RAPIER.World(PHYSICS.GRAVITY);
 
@@ -199,7 +158,7 @@ async function main(){
     groundBody,
   );
 
-  // Car
+  // Car physics body
   const carPhysicsBody = world.createRigidBody(
     RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(0, CAR.SPAWN_Y, CAR.SPAWN_Z)
@@ -214,6 +173,32 @@ async function main(){
     ).setMass(CAR.MASS),
     carPhysicsBody,
   );
+
+  // Build car using OOP classes
+  const wheels = WheelFactory.createWheels({
+    radius: WHEEL.RADIUS,
+    thickness: WHEEL.THICKNESS,
+    segments: WHEEL.SEGMENTS,
+    color: WHEEL.COLOR,
+  });
+
+  const car = new CarBuilder()
+    .setWidth(CAR.WIDTH)
+    .setHeight(CAR.HEIGHT)
+    .setLength(CAR.LENGTH)
+    .setColor(CAR.COLOR)
+    .setSpawnY(CAR.SPAWN_Y)
+    .setSpawnZ(CAR.SPAWN_Z)
+    .setLinearDamping(CAR.LINEAR_DAMPING)
+    .setAngularDamping(CAR.ANGULAR_DAMPING)
+    .setMass(CAR.MASS)
+    .setMaxSpeed(CAR.MAX_SPEED)
+    .setAcceleration(CAR.ACCELERATION)
+    .setWheels(wheels)
+    .setPhysicsBody(carPhysicsBody)
+    .build();
+
+  scene.add(car.mesh);
 
   // ========================
   // RAMPS
@@ -256,30 +241,23 @@ async function main(){
     return 2 * Math.atan2(y, w);
   }
 
-  function updateSteering(frontLeftWheel, frontRightWheel) {
+  function updateSteering(frontLeft, frontRight) {
     if (keys['a']) {
-      frontLeftWheel.rotation.y = Math.min(
-        frontLeftWheel.rotation.y + STEERING.TURN_SPEED,
-        STEERING.MAX_ANGLE,
+      frontLeft.setSteeringAngle(
+        Math.min(frontLeft.getSteeringAngle() + STEERING.TURN_SPEED, STEERING.MAX_ANGLE),
       );
     } else if (keys['d']) {
-      frontLeftWheel.rotation.y = Math.max(
-        frontLeftWheel.rotation.y - STEERING.TURN_SPEED,
-        -STEERING.MAX_ANGLE,
+      frontLeft.setSteeringAngle(
+        Math.max(frontLeft.getSteeringAngle() - STEERING.TURN_SPEED, -STEERING.MAX_ANGLE),
       );
     } else {
-      frontLeftWheel.rotation.y *= STEERING.RETURN_DAMPING;
+      frontLeft.setSteeringAngle(frontLeft.getSteeringAngle() * STEERING.RETURN_DAMPING);
     }
-    frontRightWheel.rotation.y = frontLeftWheel.rotation.y;
-    return frontLeftWheel.rotation.y;
+    frontRight.setSteeringAngle(frontLeft.getSteeringAngle());
+    return frontLeft.getSteeringAngle();
   }
 
-  function updateDriveForces(
-    steeringAngle,
-    rearLeftWheel,
-    frontLeftWheel,
-    deltaTime,
-  ) {
+  function updateDriveForces(steeringAngle, deltaTime) {
     const driving = keys['w'] || keys['s'];
     const turning = keys['a'] || keys['d'];
 
@@ -295,13 +273,8 @@ async function main(){
       );
       if (currentSpeed < CAR.MAX_SPEED) {
         const accelerationForce = CAR.MASS * CAR.ACCELERATION * deltaTime;
-
         carPhysicsBody.applyImpulse(
-          {
-            x: accelerationForce * directionX,
-            y: 0,
-            z: accelerationForce * directionZ,
-          },
+          { x: accelerationForce * directionX, y: 0, z: accelerationForce * directionZ },
           true,
         );
       }
@@ -310,9 +283,7 @@ async function main(){
     if (driving && turning) {
       const linearVelocity = carPhysicsBody.linvel();
       const speed = Math.sqrt(linearVelocity.x ** 2 + linearVelocity.z ** 2);
-      const wheelBase = Math.abs(
-        rearLeftWheel.position.z - frontLeftWheel.position.z,
-      );
+      const wheelBase = car.getWheelBase();
       const angularVelStrength = 2.5;
       const angularVelocity =
         (speed / wheelBase) * Math.tan(steeringAngle) * angularVelStrength;
@@ -325,37 +296,29 @@ async function main(){
     }
   }
 
-  function syncCarMesh() {
-    const { x, y, z } = carPhysicsBody.translation();
-    const r = carPhysicsBody.rotation();
-    car.position.set(x, y, z);
-    car.quaternion.set(r.x, r.y, r.z, r.w);
-  }
-
   function updateCamera() {
     const yaw = getYaw(carPhysicsBody);
-    const targetX = car.position.x - Math.sin(yaw) * CAMERA.DISTANCE;
-    const targetZ = car.position.z - Math.cos(yaw) * CAMERA.DISTANCE;
-    const targetY = car.position.y + CAMERA.HEIGHT;
+    const targetX = car.mesh.position.x - Math.sin(yaw) * CAMERA.DISTANCE;
+    const targetZ = car.mesh.position.z - Math.cos(yaw) * CAMERA.DISTANCE;
+    const targetY = car.mesh.position.y + CAMERA.HEIGHT;
 
     camera.position.x += (targetX - camera.position.x) * CAMERA.LERP;
     camera.position.z += (targetZ - camera.position.z) * CAMERA.LERP;
     camera.position.y += (targetY - camera.position.y) * CAMERA.LERP;
-    camera.lookAt(car.position);
+    camera.lookAt(car.mesh.position);
   }
 
   function update() {
     const deltaTime = clock.getDelta();
 
-    const frontLeftWheel = car.getObjectByName('frontLeftWheel');
-    const frontRightWheel = car.getObjectByName('frontRightWheel');
-    const rearLeftWheel = car.getObjectByName('rearLeftWheel');
-    const steeringAngle = updateSteering(frontLeftWheel, frontRightWheel);
+    const frontLeft = car.getFrontLeftWheel();
+    const frontRight = car.getFrontRightWheel();
+    const steeringAngle = updateSteering(frontLeft, frontRight);
 
-    updateDriveForces(steeringAngle, rearLeftWheel, frontLeftWheel, deltaTime);
+    updateDriveForces(steeringAngle, deltaTime);
 
     world.step();
-    syncCarMesh();
+    car.sync();
     updateCamera();
   }
 
