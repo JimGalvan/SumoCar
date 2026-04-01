@@ -1,28 +1,28 @@
 import * as THREE from 'three';
-import type { RigidBody } from '@dimforge/rapier3d-compat';
+import RAPIER from '@dimforge/rapier3d-compat';
+import type { RigidBody, RigidBodyDesc, ColliderDesc } from '@dimforge/rapier3d-compat';
+import type { IPhysicsEntity } from './i-physics-entity.js';
 import type CarConfig from './car-config.js';
 import type Wheel from './wheel.js';
 
 interface CarOptions {
   wheels: Wheel[];
   config: CarConfig;
-  physicsBody: RigidBody;
 }
 
-class Car {
+class Car implements IPhysicsEntity {
   readonly mesh: THREE.Group;
   private readonly wheels: Wheel[];
   private readonly config: CarConfig;
-  private readonly physicsBody: RigidBody;
+  private physicsBody: RigidBody | null = null;
 
-  constructor({ wheels, config, physicsBody }: CarOptions) {
+  constructor({ wheels, config }: CarOptions) {
     if (wheels.length !== 4) {
       throw new Error('Car must have 4 wheels');
     }
 
     this.wheels = wheels;
     this.config = config;
-    this.physicsBody = physicsBody;
 
     this.mesh = new THREE.Group();
     this.mesh.add(
@@ -52,6 +52,34 @@ class Car {
     this.mesh.position.y = config.spawnY;
   }
 
+  getMesh(): THREE.Group {
+    return this.mesh;
+  }
+
+  getBodyDesc(): RigidBodyDesc {
+    return RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(0, this.config.spawnY, this.config.spawnZ)
+      .setLinearDamping(this.config.linearDamping)
+      .setAngularDamping(this.config.angularDamping);
+  }
+
+  getColliderDesc(): ColliderDesc {
+    return RAPIER.ColliderDesc.cuboid(
+      this.config.width / 2,
+      this.config.height / 2,
+      this.config.length / 2,
+    ).setMass(this.config.mass);
+  }
+
+  onPhysicsReady(body: RigidBody): void {
+    this.physicsBody = body;
+  }
+
+  getPhysicsBody(): RigidBody {
+    if (!this.physicsBody) throw new Error('Physics not initialized — call gameWorld.add(car) first');
+    return this.physicsBody;
+  }
+
   getWheelByName(name: string): Wheel | undefined {
     return this.wheels.find((w) => w.name === name);
   }
@@ -66,8 +94,9 @@ class Car {
   }
 
   sync(): void {
-    const { x, y, z } = this.physicsBody.translation();
-    const r = this.physicsBody.rotation();
+    const body = this.getPhysicsBody();
+    const { x, y, z } = body.translation();
+    const r = body.rotation();
     this.mesh.position.set(x, y, z);
     this.mesh.quaternion.set(r.x, r.y, r.z, r.w);
   }

@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import CarBuilder from './car-builder.js';
 import WheelFactory from './wheel-factory.js';
+import GameWorld from './game-world.js';
+import RampBuilder from './ramp-builder.js';
 import type Wheel from './wheel.js';
 
 // ========================
@@ -142,36 +144,14 @@ window.addEventListener('keyup',   (e) => { keys[e.key.toLowerCase()] = false; }
 // ========================
 async function main(): Promise<void> {
   await RAPIER.init();
-  const world = new RAPIER.World(PHYSICS.GRAVITY);
+  const gameWorld = new GameWorld(scene, PHYSICS.GRAVITY);
 
   // Ground
-  const groundBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-  world.createCollider(
-    RAPIER.ColliderDesc.cuboid(
-      GROUND.SIZE / 2,
-      GROUND.THICKNESS,
-      GROUND.SIZE / 2,
-    ),
-    groundBody,
+  gameWorld.addStatic(
+    RAPIER.RigidBodyDesc.fixed(),
+    RAPIER.ColliderDesc.cuboid(GROUND.SIZE / 2, GROUND.THICKNESS, GROUND.SIZE / 2),
   );
 
-  // Car physics body
-  const carPhysicsBody = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic()
-      .setTranslation(0, CAR.SPAWN_Y, CAR.SPAWN_Z)
-      .setLinearDamping(CAR.LINEAR_DAMPING)
-      .setAngularDamping(CAR.ANGULAR_DAMPING),
-  );
-  world.createCollider(
-    RAPIER.ColliderDesc.cuboid(
-      CAR.WIDTH / 2,
-      CAR.HEIGHT / 2,
-      CAR.LENGTH / 2,
-    ).setMass(CAR.MASS),
-    carPhysicsBody,
-  );
-
-  // Build car using OOP classes
   const wheels = WheelFactory.createWheels({
     radius: WHEEL.RADIUS,
     thickness: WHEEL.THICKNESS,
@@ -192,43 +172,41 @@ async function main(): Promise<void> {
     .setMaxSpeed(CAR.MAX_SPEED)
     .setAcceleration(CAR.ACCELERATION)
     .setWheels(wheels)
-    .setPhysicsBody(carPhysicsBody)
     .build();
 
-  scene.add(car.mesh);
+  gameWorld.add(car);
 
   // ========================
   // RAMPS
   // ========================
 
-  function createRamp(x: number, y: number, z: number, angle: number): void {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(RAMP.WIDTH, RAMP.HEIGHT, RAMP.DEPTH),
-      new THREE.MeshStandardMaterial({ color: RAMP.COLOR }),
-    );
-    mesh.rotation.x = -angle;
-    mesh.position.set(x, y, z);
-    scene.add(mesh);
+  const ramp1 = new RampBuilder()
+    .setWidth(RAMP.WIDTH)
+    .setHeight(RAMP.HEIGHT)
+    .setDepth(RAMP.DEPTH)
+    .setColor(RAMP.COLOR)
+    .setPosition(0, 0.5, -10)
+    .setAngle(Math.PI / 8)
+    .build();
 
-    const body = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-angle, 0, 0));
-    body.setTranslation({ x, y, z }, true);
-    body.setRotation({ x: q.x, y: q.y, z: q.z, w: q.w }, true);
-    world.createCollider(
-      RAPIER.ColliderDesc.cuboid(RAMP.WIDTH / 2, RAMP.HEIGHT / 2, RAMP.DEPTH / 2),
-      body,
-    );
-  }
+  const ramp2 = new RampBuilder()
+    .setWidth(RAMP.WIDTH)
+    .setHeight(RAMP.HEIGHT)
+    .setDepth(RAMP.DEPTH)
+    .setColor(RAMP.COLOR)
+    .setPosition(10, 0.5, -20)
+    .setAngle(Math.PI / 6)
+    .build();
 
-  createRamp(0, 0.5, -10, Math.PI / 8);
-  createRamp(10, 0.5, -20, Math.PI / 6);
+  gameWorld.add(ramp1);
+  gameWorld.add(ramp2);
 
   // ========================
   // GAME LOOP
   // ========================
 
   function getYaw(): number {
-    const { y, w } = carPhysicsBody.rotation();
+    const { y, w } = car.getPhysicsBody().rotation();
     return 2 * Math.atan2(y, w);
   }
 
@@ -255,12 +233,12 @@ async function main(): Promise<void> {
     if (driving) {
       const direction = keys['w'] ? 1 : -1;
       const yaw = getYaw();
-      const linearVelocity = carPhysicsBody.linvel();
+      const linearVelocity = car.getPhysicsBody().linvel();
       const currentSpeed = Math.sqrt(linearVelocity.x ** 2 + linearVelocity.z ** 2);
 
       if (currentSpeed < CAR.MAX_SPEED) {
         const accelerationForce = CAR.MASS * CAR.ACCELERATION * deltaTime;
-        carPhysicsBody.applyImpulse(
+        car.getPhysicsBody().applyImpulse(
           { x: accelerationForce * Math.sin(yaw) * direction, y: 0, z: accelerationForce * Math.cos(yaw) * direction },
           true,
         );
@@ -268,14 +246,14 @@ async function main(): Promise<void> {
     }
 
     if (driving && turning) {
-      const linearVelocity = carPhysicsBody.linvel();
+      const linearVelocity = car.getPhysicsBody().linvel();
       const speed = Math.sqrt(linearVelocity.x ** 2 + linearVelocity.z ** 2);
       const angularVelocity =
         (speed / car.getWheelBase()) * Math.tan(steeringAngle) * 2.5;
       const dir = keys['w'] ? 1 : -1;
 
-      if (Math.abs(carPhysicsBody.angvel().y) < PHYSICS.MAX_ANGULAR_VEL) {
-        carPhysicsBody.applyTorqueImpulse(
+      if (Math.abs(car.getPhysicsBody().angvel().y) < PHYSICS.MAX_ANGULAR_VEL) {
+        car.getPhysicsBody().applyTorqueImpulse(
           { x: 0, y: angularVelocity * PHYSICS.TORQUE_FORCE * dir, z: 0 },
           true,
         );
@@ -304,7 +282,7 @@ async function main(): Promise<void> {
 
     updateDriveForces(steeringAngle, deltaTime);
 
-    world.step();
+    gameWorld.step();
     car.sync();
     updateCamera();
   }
